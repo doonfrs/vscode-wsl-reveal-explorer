@@ -24,7 +24,7 @@ function activate(context) {
 		const dirPath = path.dirname(filePath);
 		console.log('Directory path:', dirPath);
 		
-		const winPath = wslPathToWindows(dirPath);
+		const winPath = convertToWindowsPath(dirPath);
 		console.log('Windows path:', winPath);
 
 		try {
@@ -51,42 +51,60 @@ function activate(context) {
 	console.log('Commands registered successfully');
 }
 
-function wslPathToWindows(wslPath) {
-	// Check for user-configured default distribution name first
+function convertToWindowsPath(remotePath) {
+	// Get configuration settings
 	const config = vscode.workspace.getConfiguration('wsl-reveal-explorer');
 	const configuredDistro = config.get('defaultDistributionName');
+	const pathPrefix = config.get('pathPrefix') || '\\\\wsl$';
 	
 	let distro = 'Ubuntu'; // fallback default
 	
-	if (configuredDistro && configuredDistro.trim()) {
-		// Use the user-configured distribution name
-		distro = configuredDistro.trim();
-		console.log('Using configured distro name:', distro);
-	} else {
-		// Detect WSL distro name dynamically only if no configuration is set
-		const { execSync } = require('child_process');
-		
-		try {
-			// Try to get the actual distro name
-			const result = execSync('cat /etc/os-release | grep "^NAME=" | cut -d= -f2 | tr -d \'"\'', { encoding: 'utf8' });
-			if (result.trim()) {
-				distro = result.trim();
-			}
-		} catch (error) {
-			console.log('Could not detect distro name, using default:', distro);
+	// Check if we're using a custom path prefix (not WSL)
+	if (pathPrefix !== '\\\\wsl$') {
+		// For custom path prefixes (like Remote SSH), use the configured distro or empty
+		if (configuredDistro && configuredDistro.trim()) {
+			distro = configuredDistro.trim();
+		} else {
+			distro = ''; // No distro name needed for custom paths
 		}
-		
-		console.log('Using auto-detected distro name:', distro);
+		console.log('Using custom path prefix:', pathPrefix, 'with distro:', distro);
+	} else {
+		// Original WSL logic
+		if (configuredDistro && configuredDistro.trim()) {
+			// Use the user-configured distribution name
+			distro = configuredDistro.trim();
+			console.log('Using configured distro name:', distro);
+		} else {
+			// Detect WSL distro name dynamically only if no configuration is set
+			const { execSync } = require('child_process');
+			
+			try {
+				// Try to get the actual distro name
+				const result = execSync('cat /etc/os-release | grep "^NAME=" | cut -d= -f2 | tr -d \'"\'', { encoding: 'utf8' });
+				if (result.trim()) {
+					distro = result.trim();
+				}
+			} catch (error) {
+				console.log('Could not detect distro name, using default:', distro);
+			}
+			
+			console.log('Using auto-detected distro name:', distro);
+		}
 	}
 
 	// Remove leading slash
-	const pathWithoutSlash = wslPath.startsWith('/') ? wslPath.slice(1) : wslPath;
+	const pathWithoutSlash = remotePath.startsWith('/') ? remotePath.slice(1) : remotePath;
 
 	// Convert forward slashes to backslashes
 	const winPath = pathWithoutSlash.replace(/\//g, '\\');
 
 	// Compose UNC path
-	return `\\\\wsl$\\${distro}\\${winPath}`;
+	if (distro) {
+		return `${pathPrefix}\\${distro}\\${winPath}`;
+	} else {
+		// For custom paths without distro name
+		return `${pathPrefix}\\${winPath}`;
+	}
 }
 
 function deactivate() { }

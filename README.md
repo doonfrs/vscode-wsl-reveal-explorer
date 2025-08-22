@@ -2,7 +2,7 @@
 
 ![Demo](https://raw.githubusercontent.com/doonfrs/vscode-wsl-reveal-explorer/0fd24c7d76010f63be84ad18cdd9d532e3185ef0/assets/gif/intro.gif)
 
-A VS Code extension that seamlessly opens Windows File Explorer from WSL, allowing you to reveal files and folders in the native Windows file manager with a simple right-click.
+A VS Code extension that seamlessly opens Windows File Explorer from WSL and Remote SSH connections, allowing you to reveal files and folders in the native Windows file manager with a simple right-click.
 
 ## ☕ Support
 
@@ -16,17 +16,20 @@ If this extension helps you, consider supporting the development:
 ## 🚀 Features
 
 - **Zero Configuration Required** - Works out of the box with any WSL distribution
+- **Remote SSH Support** - Also works with Remote SSH connections and mounted drives
 - **Context Menu Integration** - Right-click any file or folder to reveal it in Windows Explorer
 - **Automatic WSL Detection** - Dynamically detects your WSL distribution name
 - **Custom Distribution Support** - Override auto-detection with your own distribution name
-- **Reliable Path Translation** - Converts WSL paths to Windows-compatible UNC paths
+- **Configurable Path Prefix** - Customize network path prefix for different connection types
+- **Reliable Path Translation** - Converts remote paths to Windows-compatible UNC paths
 - **Cross-Distribution Support** - Works with Ubuntu, Debian, Alpine, and other WSL distributions
 
 ## 📋 Prerequisites
 
-- Windows Subsystem for Linux (WSL) or WSL2
-- Visual Studio Code running in WSL mode
+- Windows Subsystem for Linux (WSL) or WSL2, or Remote SSH connection
+- Visual Studio Code running in WSL mode or connected to Remote SSH
 - PowerShell available on Windows (included by default)
+- For Remote SSH: Network drives or shares accessible from Windows
 
 
 ## 🌟 Show Your Support
@@ -84,6 +87,33 @@ If automatic detection fails or you have a custom WSL distribution name, you can
 
 **Note**: Leave this setting empty (default) to use automatic detection.
 
+### Custom Path Prefix for Remote SSH
+
+For Remote SSH connections or custom network drives, you can configure a custom path prefix:
+
+1. **Via Settings UI**:
+   - Open VS Code Settings (`Ctrl+,`)
+   - Search for "WSL Reveal Explorer"
+   - Set "Path Prefix" to your network path
+
+2. **Via settings.json**:
+
+   ```json
+   {
+     "wsl-reveal-explorer.pathPrefix": "\\\\server\\share",
+     "wsl-reveal-explorer.defaultDistributionName": ""
+   }
+   ```
+
+**Examples**:
+
+- **WSL (default)**: `"\\\\wsl$"` - Standard WSL access
+- **Network Share**: `"\\\\server\\share"` - Direct network share access
+- **Mapped Drive**: `"\\\\192.168.1.100\\projects"` - IP-based network path
+- **SSHFS Mount**: `"\\\\sshfs\\hostname"` - SSHFS mounted drives
+
+**Note**: When using custom path prefixes, the distribution name is optional and can be left empty.
+
 ## 🛠️ Development
 
 To contribute or modify this extension:
@@ -103,9 +133,11 @@ code .
 ## 🐛 Troubleshooting
 
 If the extension doesn't work:
-1. **Ensure you're running VS Code in WSL mode** (not Windows)
+1. **Ensure you're running VS Code in WSL mode or Remote SSH** (not Windows locally)
 2. **Verify that PowerShell is available** on your Windows system
-3. **Check that Windows File Explorer can access `\\wsl$\<distribution>` paths manually**
+3. **Check that Windows File Explorer can access your configured paths manually**
+   - For WSL: `\\wsl$\<distribution>`
+   - For Remote SSH: Your custom network path
 
 ### Distribution Detection Issues
 
@@ -127,6 +159,27 @@ If the extension opens the wrong folder or fails to work:
    - Auto-detection might return `Ubuntu` but your distribution is `Ubuntu2`
    - Version-specific names like `Ubuntu-20.04` vs `Ubuntu-22.04`
    - Custom installation names
+
+### Remote SSH Issues
+
+For Remote SSH connections:
+
+1. **Verify your network path configuration**:
+   - Set the correct `pathPrefix` in settings
+   - Test the path manually in Windows File Explorer
+
+2. **Common Remote SSH scenarios**:
+   - **SSHFS mounts**: Configure path like `\\\\sshfs\\hostname`
+   - **Network shares**: Use `\\\\server\\share` format
+   - **Direct IP access**: Use `\\\\192.168.1.100\\path` format
+
+3. **Path mapping examples**:
+
+   ```text
+   Remote path: /home/user/project
+   Windows path: \\server\share\home\user\project
+   Configuration: "pathPrefix": "\\\\server\\share"
+   ```
 
 ## 📄 License
 

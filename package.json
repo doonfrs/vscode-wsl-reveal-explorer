@@ -53,7 +53,7 @@
       "explorer/context": [
         {
           "command": "wsl-reveal-explorer.revealInExplorer",
-          "when": "remoteName == wsl",
+          "when": "remoteName == wsl || remoteName =~ /^ssh-remote/",
           "group": "navigation@1"
         }
       ]
@@ -65,6 +65,11 @@
           "type": "string",
           "default": "",
           "description": "Default WSL distribution name to use when auto-detection fails (e.g., 'Ubuntu-22.04', 'Ubuntu2'). Leave empty to use automatic detection."
+        },
+        "wsl-reveal-explorer.pathPrefix": {
+          "type": "string",
+          "default": "\\\\wsl$",
+          "description": "Path prefix for network paths. Use '\\\\wsl$' for WSL, or custom network paths like '\\\\server\\share' for Remote SSH mounted drives."
         }
       }
     }
