@@ -2,7 +2,7 @@
   "name": "wsl-reveal-explorer",
   "displayName": "WSL Reveal in File Explorer",
   "description": "Seamlessly open Windows File Explorer from WSL with zero configuration. Right-click any file or folder to reveal it in Windows Explorer.",
-  "version": "1.1.2",
+  "version": "1.2.2",
   "icon": "assets/imgs/logo.jpg",
   "author": {
     "name": "Feras Abdalrahman",
