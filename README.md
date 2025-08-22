@@ -18,6 +18,7 @@ If this extension helps you, consider supporting the development:
 - **Zero Configuration Required** - Works out of the box with any WSL distribution
 - **Context Menu Integration** - Right-click any file or folder to reveal it in Windows Explorer
 - **Automatic WSL Detection** - Dynamically detects your WSL distribution name
+- **Custom Distribution Support** - Override auto-detection with your own distribution name
 - **Reliable Path Translation** - Converts WSL paths to Windows-compatible UNC paths
 - **Cross-Distribution Support** - Works with Ubuntu, Debian, Alpine, and other WSL distributions
 
@@ -45,15 +46,43 @@ Every star, review, and coffee means a lot and helps keep this project alive! �
 3. **Select "Reveal in File Explorer"** from the context menu
 4. **Windows File Explorer opens** showing the selected file/folder location
 
-That's it! No configuration needed.
+That's it! No configuration needed by default.
 
 ## 🔧 How It Works
 
 The extension automatically:
-- Detects your WSL distribution name
+- Detects your WSL distribution name (or uses your custom configuration)
 - Converts Linux paths to Windows UNC format (`\\wsl$\Distribution\path`)
 - Uses PowerShell to reliably open Windows File Explorer
 - Handles path escaping and special characters
+
+## ⚙️ Configuration
+
+### Custom WSL Distribution Name
+
+If automatic detection fails or you have a custom WSL distribution name, you can override it:
+
+1. **Via Settings UI**:
+   - Open VS Code Settings (`Ctrl+,`)
+   - Search for "WSL Reveal Explorer"
+   - Set "Default Distribution Name" to your distribution name
+
+2. **Via settings.json**:
+
+   ```json
+   {
+     "wsl-reveal-explorer.defaultDistributionName": "Ubuntu2"
+   }
+   ```
+
+**Common examples**:
+
+- `Ubuntu2` - for secondary Ubuntu installations
+- `Ubuntu-22.04` - for version-specific Ubuntu distributions
+- `Debian` - for Debian distributions
+- `kali-linux` - for Kali Linux distributions
+
+**Note**: Leave this setting empty (default) to use automatic detection.
 
 ## 🛠️ Development
 
@@ -74,9 +103,30 @@ code .
 ## 🐛 Troubleshooting
 
 If the extension doesn't work:
-1. Ensure you're running VS Code in WSL mode (not Windows)
-2. Verify that PowerShell is available on your Windows system
-3. Check that Windows File Explorer can access `\\wsl$\<distribution>` paths manually
+1. **Ensure you're running VS Code in WSL mode** (not Windows)
+2. **Verify that PowerShell is available** on your Windows system
+3. **Check that Windows File Explorer can access `\\wsl$\<distribution>` paths manually**
+
+### Distribution Detection Issues
+
+If the extension opens the wrong folder or fails to work:
+
+1. **Check your actual WSL distribution name**:
+
+   ```bash
+   # In WSL terminal, run:
+   wsl.exe -l -v
+   ```
+
+2. **Set the correct distribution name manually**:
+   - Use the exact name from the command above
+   - Go to VS Code Settings and search for "WSL Reveal Explorer"
+   - Set "Default Distribution Name" to the correct name (e.g., `Ubuntu-22.04`, `Ubuntu2`)
+
+3. **Common distribution name issues**:
+   - Auto-detection might return `Ubuntu` but your distribution is `Ubuntu2`
+   - Version-specific names like `Ubuntu-20.04` vs `Ubuntu-22.04`
+   - Custom installation names
 
 ## 📄 License
 

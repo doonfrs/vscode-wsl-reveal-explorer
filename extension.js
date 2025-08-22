@@ -52,21 +52,32 @@ function activate(context) {
 }
 
 function wslPathToWindows(wslPath) {
-	// Detect WSL distro name dynamically
-	const { execSync } = require('child_process');
-	let distro = 'Ubuntu'; // default fallback
+	// Check for user-configured default distribution name first
+	const config = vscode.workspace.getConfiguration('wsl-reveal-explorer');
+	const configuredDistro = config.get('defaultDistributionName');
 	
-	try {
-		// Try to get the actual distro name
-		const result = execSync('cat /etc/os-release | grep "^NAME=" | cut -d= -f2 | tr -d \'"\'', { encoding: 'utf8' });
-		if (result.trim()) {
-			distro = result.trim();
+	let distro = 'Ubuntu'; // fallback default
+	
+	if (configuredDistro && configuredDistro.trim()) {
+		// Use the user-configured distribution name
+		distro = configuredDistro.trim();
+		console.log('Using configured distro name:', distro);
+	} else {
+		// Detect WSL distro name dynamically only if no configuration is set
+		const { execSync } = require('child_process');
+		
+		try {
+			// Try to get the actual distro name
+			const result = execSync('cat /etc/os-release | grep "^NAME=" | cut -d= -f2 | tr -d \'"\'', { encoding: 'utf8' });
+			if (result.trim()) {
+				distro = result.trim();
+			}
+		} catch (error) {
+			console.log('Could not detect distro name, using default:', distro);
 		}
-	} catch (error) {
-		console.log('Could not detect distro name, using default:', distro);
+		
+		console.log('Using auto-detected distro name:', distro);
 	}
-	
-	console.log('Using distro name:', distro);
 
 	// Remove leading slash
 	const pathWithoutSlash = wslPath.startsWith('/') ? wslPath.slice(1) : wslPath;
