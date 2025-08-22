@@ -28,10 +28,8 @@ function activate(context) {
 		console.log('Windows path:', winPath);
 
 		try {
-			// Use PowerShell to open explorer - this is the method that works reliably
-			const escapedPath = winPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-			const command = `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "explorer.exe '\\"${escapedPath}\\"'"`;
-			console.log('Executing PowerShell command:', command);
+			const command = buildExplorerCommand(winPath);
+			console.log('Executing command:', command);
 			
 			execSync(command);
 			vscode.window.showInformationMessage(`Opened folder: ${winPath}`);
@@ -104,6 +102,23 @@ function convertToWindowsPath(remotePath) {
 	} else {
 		// For custom paths without distro name
 		return `${pathPrefix}\\${winPath}`;
+	}
+}
+
+function buildExplorerCommand(windowsPath) {
+	const config = vscode.workspace.getConfiguration('wsl-reveal-explorer');
+	const customCommand = config.get('customCommand');
+	
+	if (customCommand && customCommand.trim()) {
+		// Use custom command with {path} placeholder replacement
+		const escapedPath = windowsPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+		const command = customCommand.replace('{path}', escapedPath);
+		return `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "${command}"`;
+	} else {
+		// Use default Windows Explorer - this is the method that works reliably
+		const escapedPath = windowsPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+		const command = `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "explorer.exe \\"${escapedPath}\\""`;
+		return command;
 	}
 }
 

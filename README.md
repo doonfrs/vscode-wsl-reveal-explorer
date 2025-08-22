@@ -17,7 +17,8 @@ If this extension helps you, consider supporting the development:
 
 - **Zero Configuration Required** - Works out of the box with any WSL distribution
 - **Remote SSH Support** - Also works with Remote SSH connections and mounted drives
-- **Context Menu Integration** - Right-click any file or folder to reveal it in Windows Explorer
+- **Custom File Explorer Support** - Use your preferred file manager or stick with default Windows Explorer
+- **Context Menu Integration** - Right-click any file or folder to reveal it in Windows Explorer or your custom choice
 - **Automatic WSL Detection** - Dynamically detects your WSL distribution name
 - **Custom Distribution Support** - Override auto-detection with your own distribution name
 - **Configurable Path Prefix** - Customize network path prefix for different connection types
@@ -114,6 +115,34 @@ For Remote SSH connections or custom network drives, you can configure a custom 
 
 **Note**: When using custom path prefixes, the distribution name is optional and can be left empty.
 
+### Custom File Explorer
+
+Use your preferred file manager instead of the default Windows Explorer:
+
+1. **Via Settings UI**:
+   - Open VS Code Settings (`Ctrl+,`)
+   - Search for "WSL Reveal Explorer"
+   - Set "Custom Command" to your preferred command
+
+2. **Via settings.json**:
+
+   ```json
+   {
+     "wsl-reveal-explorer.customCommand": "explorer.exe {path}"
+   }
+   ```
+
+**Available placeholders**:
+- `{path}` - The folder path to open
+
+**Examples**:
+- **Total Commander**: `"C:\\totalcmd\\TOTALCMD64.EXE /O /T {path}"`
+- **FreeCommander**: `"C:\\FreeCommander XE\\FreeCommander.exe /C /T {path}"`
+- **Directory Opus**: `"C:\\Program Files\\GPSoftware\\Directory Opus\\dopus.exe {path}"`
+- **Q-Dir**: `"C:\\Q-Dir\\Q-Dir.exe {path}"`
+
+**Note**: Leave this setting empty (default) to use Windows Explorer.
+
 ## 🛠️ Development
 
 To contribute or modify this extension:
@@ -180,6 +209,15 @@ For Remote SSH connections:
    Windows path: \\server\share\home\user\project
    Configuration: "pathPrefix": "\\\\server\\share"
    ```
+
+### File Explorer Issues
+
+If your custom file explorer doesn't open:
+
+1. **Verify the file explorer is installed** and accessible from the configured path
+2. **Check the custom command syntax** - ensure it's a valid PowerShell command
+3. **Test manually**: Try running the command directly in PowerShell to debug issues
+4. **Use default**: Set the custom command to empty to fall back to Windows Explorer
 
 ## 📄 License
 
