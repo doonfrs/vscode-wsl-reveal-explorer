@@ -1,4 +1,7 @@
 const vscode = require('vscode');
+const path = require('path');
+const { spawn } = require('child_process');
+const { NO_PATH_MAPPING, remoteToWindowsPath, buildLaunchCommand, runWslpath } = require('./paths');
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -15,28 +18,35 @@ function activate(context) {
 			return;
 		}
 
-		const filePath = uri.fsPath;
-		console.log('File path:', filePath);
+		// The extension runs in the local VS Code, so Explorer opens on this machine
+		if (process.platform !== 'win32') {
+			vscode.window.showErrorMessage('Reveal in File Explorer needs VS Code running on Windows.');
+			return;
+		}
 
-		const { execSync } = require('child_process');
-		const path = require('path');
+		const folder = uri.with({ path: path.posix.dirname(uri.path) });
+		console.log('Directory path:', folder.path);
 
-		const dirPath = path.dirname(filePath);
-		console.log('Directory path:', dirPath);
-		
-		const winPath = convertToWindowsPath(dirPath);
+		const config = vscode.workspace.getConfiguration('wsl-reveal-explorer');
+
+		let winPath;
+		try {
+			winPath = remoteToWindowsPath(
+				{ scheme: folder.scheme, authority: folder.authority, path: folder.path, fsPath: folder.fsPath },
+				{
+					defaultDistributionName: config.get('defaultDistributionName'),
+					pathPrefix: config.get('pathPrefix'),
+					pathMappings: config.get('pathMappings'),
+				},
+				runWslpath
+			);
+		} catch (error) {
+			showPathError(error);
+			return;
+		}
 		console.log('Windows path:', winPath);
 
-		try {
-			const command = buildExplorerCommand(winPath);
-			console.log('Executing command:', command);
-			
-			execSync(command);
-			vscode.window.showInformationMessage(`Opened folder: ${winPath}`);
-		} catch (error) {
-			console.error('Error opening explorer:', error);
-			vscode.window.showErrorMessage(`Failed to open folder: ${winPath}. Error: ${error.message}`);
-		}
+		openFolder(winPath, config.get('customCommand'));
 	});
 
 	let testDisposable = vscode.commands.registerCommand('wsl-reveal-explorer.test', function () {
@@ -49,100 +59,35 @@ function activate(context) {
 	console.log('Commands registered successfully');
 }
 
-function convertToWindowsPath(remotePath) {
-	// Get configuration settings
-	const config = vscode.workspace.getConfiguration('wsl-reveal-explorer');
-	const configuredDistro = config.get('defaultDistributionName');
-	const pathPrefix = config.get('pathPrefix') || '\\\\wsl$';
+function openFolder(winPath, customCommand) {
+	const launch = buildLaunchCommand(winPath, customCommand);
+	console.log('Executing command:', launch.file, launch.args);
 
-	let distro = 'Ubuntu'; // fallback default
-
-	// Check if we're using a custom path prefix (not WSL)
-	if (pathPrefix !== '\\\\wsl$') {
-		// For custom path prefixes (like Remote SSH), use the configured distro or empty
-		if (configuredDistro && configuredDistro.trim()) {
-			distro = configuredDistro.trim();
-		} else {
-			distro = ''; // No distro name needed for custom paths
-		}
-		console.log('Using custom path prefix:', pathPrefix, 'with distro:', distro);
-	} else {
-		// Windows drive mounted in WSL: /mnt/c/foo -> C:\foo
-		const driveMatch = remotePath.match(/^\/mnt\/([a-zA-Z])(\/.*)?$/);
-		if (driveMatch) {
-			const drivePath = `${driveMatch[1].toUpperCase()}:\\${(driveMatch[2] || '').slice(1).replace(/\//g, '\\')}`;
-			console.log('Using Windows drive path:', drivePath);
-			return drivePath;
-		}
-
-		if (configuredDistro && configuredDistro.trim()) {
-			// Use the user-configured distribution name
-			distro = configuredDistro.trim();
-			console.log('Using configured distro name:', distro);
-		} else {
-			// Let WSL convert the path itself (handles distro name and custom mount roots)
-			const { execFileSync } = require('child_process');
-
-			try {
-				const result = execFileSync('wslpath', ['-w', remotePath], { encoding: 'utf8' }).trim();
-				if (result) {
-					console.log('Using wslpath result:', result);
-					return result;
-				}
-			} catch (error) {
-				console.log('wslpath failed, falling back to manual conversion:', error.message);
-			}
-
-			distro = detectDistroName() || distro;
-			console.log('Using auto-detected distro name:', distro);
-		}
-	}
-
-	// Remove leading slash
-	const pathWithoutSlash = remotePath.startsWith('/') ? remotePath.slice(1) : remotePath;
-
-	// Convert forward slashes to backslashes
-	const winPath = pathWithoutSlash.replace(/\//g, '\\');
-
-	// Compose UNC path
-	if (distro) {
-		return `${pathPrefix}\\${distro}\\${winPath}`;
-	} else {
-		// For custom paths without distro name
-		return `${pathPrefix}\\${winPath}`;
-	}
+	// explorer.exe exits with code 1 even on success, so only spawn failures count as errors
+	const child = spawn(launch.file, launch.args, launch.options);
+	child.on('spawn', () => {
+		vscode.window.showInformationMessage(`Opened folder: ${winPath}`);
+	});
+	child.on('error', (error) => {
+		console.error('Error opening explorer:', error);
+		vscode.window.showErrorMessage(`Failed to open folder: ${winPath}. Error: ${error.message}`);
+	});
+	child.unref();
 }
 
-function detectDistroName() {
-	// Set by WSL for every process started through wsl.exe
-	if (process.env.WSL_DISTRO_NAME) {
-		return process.env.WSL_DISTRO_NAME;
+function showPathError(error) {
+	console.error('Error resolving path:', error);
+
+	if (error.code !== NO_PATH_MAPPING) {
+		vscode.window.showErrorMessage(`Failed to resolve folder path. Error: ${error.message}`);
+		return;
 	}
 
-	// VS Code WSL remote authority looks like "wsl+Ubuntu2"
-	const authority = vscode.env.remoteAuthority;
-	if (authority && authority.startsWith('wsl+')) {
-		return decodeURIComponent(authority.slice(4));
-	}
-
-	return '';
-}
-
-function buildExplorerCommand(windowsPath) {
-	const config = vscode.workspace.getConfiguration('wsl-reveal-explorer');
-	const customCommand = config.get('customCommand');
-	
-	if (customCommand && customCommand.trim()) {
-		// Use custom command with {path} placeholder replacement
-		const escapedPath = windowsPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-		const command = customCommand.replace('{path}', escapedPath);
-		return `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "${command}"`;
-	} else {
-		// Use default Windows Explorer - this is the method that works reliably
-		const escapedPath = windowsPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-		const command = `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "explorer.exe \\"${escapedPath}\\""`;
-		return command;
-	}
+	vscode.window.showErrorMessage(error.message, 'Open Settings').then((choice) => {
+		if (choice === 'Open Settings') {
+			vscode.commands.executeCommand('workbench.action.openSettings', 'wsl-reveal-explorer.pathMappings');
+		}
+	});
 }
 
 function deactivate() { }
@@ -150,4 +95,4 @@ function deactivate() { }
 module.exports = {
 	activate,
 	deactivate
-} 
+}

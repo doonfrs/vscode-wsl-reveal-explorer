@@ -2,7 +2,7 @@
   "name": "wsl-reveal-explorer",
   "displayName": "WSL Reveal in File Explorer",
   "description": "Seamlessly open Windows File Explorer from WSL with zero configuration. Right-click any file or folder to reveal it in Windows Explorer.",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "icon": "assets/imgs/logo.jpg",
   "author": {
     "name": "Feras Abdalrahman",
@@ -38,6 +38,9 @@
     "onStartupFinished"
   ],
   "main": "./extension.js",
+  "extensionKind": [
+    "ui"
+  ],
   "contributes": {
     "commands": [
       {
@@ -66,10 +69,18 @@
           "default": "",
           "description": "Override the auto-detected WSL distribution name (e.g., 'Ubuntu-22.04', 'Ubuntu2'). Not used for Windows drive paths like /mnt/c/..., which always open as C:\\.... Leave empty to use automatic detection."
         },
+        "wsl-reveal-explorer.pathMappings": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "markdownDescription": "Remote SSH: map remote folders to Windows paths. Each key is a remote path, each value is the Windows path it is shared as. The longest matching key wins. Example: `{ \"D:\\\\\": \"\\\\\\\\host\\\\proj1\", \"/home/me/projects\": \"\\\\\\\\server\\\\projects\" }`"
+        },
         "wsl-reveal-explorer.pathPrefix": {
           "type": "string",
           "default": "\\\\wsl$",
-          "description": "Path prefix for network paths. Use '\\\\wsl$' for WSL, or custom network paths like '\\\\server\\share' for Remote SSH mounted drives."
+          "description": "Legacy: path prefix for network paths. Use '\\\\wsl$' for WSL. For Remote SSH, prefer 'pathMappings'; this prefix is only used when no mapping matches, e.g. '\\\\server\\share'."
         },
         "wsl-reveal-explorer.customCommand": {
           "type": "string",
@@ -80,7 +91,7 @@
     }
   },
   "scripts": {
-    "test": "echo \"No tests specified\""
+    "test": "node --test test/*.test.js"
   },
   "devDependencies": {
     "@types/vscode": "^1.74.0"
