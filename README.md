@@ -16,21 +16,20 @@ If this extension helps you, consider supporting the development:
 ## 🚀 Features
 
 - **Zero Configuration Required** - Works out of the box with any WSL distribution
-- **Remote SSH Support** - Also works with Remote SSH connections and mounted drives
+- **Remote SSH Support** - Map remote folders (Linux or Windows hosts) to the network shares you see on Windows
 - **Custom File Explorer Support** - Use your preferred file manager or stick with default Windows Explorer
 - **Context Menu Integration** - Right-click any file or folder to reveal it in Windows Explorer or your custom choice
 - **Automatic WSL Detection** - Dynamically detects your WSL distribution name
 - **Custom Distribution Support** - Override auto-detection with your own distribution name
-- **Configurable Path Prefix** - Customize network path prefix for different connection types
+- **Multiple Path Mappings** - Each remote folder or drive can map to its own share
 - **Reliable Path Translation** - Converts remote paths to Windows-compatible UNC paths
 - **Cross-Distribution Support** - Works with Ubuntu, Debian, Alpine, and other WSL distributions
 
 ## 📋 Prerequisites
 
-- Windows Subsystem for Linux (WSL) or WSL2, or Remote SSH connection
-- Visual Studio Code running in WSL mode or connected to Remote SSH
-- PowerShell available on Windows (included by default)
-- For Remote SSH: Network drives or shares accessible from Windows
+- VS Code on Windows, connected to WSL / WSL2 or to a Remote SSH host
+- The extension installs into your local (Windows) VS Code, so Explorer opens on your own desktop
+- For Remote SSH: the remote folders shared as network paths you can open from Windows
 
 
 ## 🌟 Show Your Support
@@ -54,17 +53,17 @@ That's it! No configuration needed by default.
 
 ## 🔧 How It Works
 
-The extension automatically:
-- Detects your WSL distribution name (or uses your custom configuration)
-- Converts Linux paths to Windows UNC format (`\\wsl$\Distribution\path`)
-- Uses PowerShell to reliably open Windows File Explorer
-- Handles path escaping and special characters
+The extension runs in your local VS Code on Windows and works out the Windows path from the remote folder:
+- **WSL**: reads the distribution name from the VS Code window and converts Linux paths with `wslpath` to Windows UNC format (`\\wsl.localhost\Distribution\path`), falling back to `\\wsl$\Distribution\path` if needed (or uses your custom configuration)
+- **WSL**: opens Windows drive paths directly: `/mnt/c/Users/me/project` opens as `C:\Users\me\project`
+- **Remote SSH**: swaps the remote folder for the Windows path you configured in `pathMappings`
+- Opens the folder with `explorer.exe`, or with your custom command
 
 ## ⚙️ Configuration
 
 ### Custom WSL Distribution Name
 
-If automatic detection fails or you have a custom WSL distribution name, you can override it:
+The distribution name is detected automatically, so this is rarely needed. If you still want to force a specific name, you can override it:
 
 1. **Via Settings UI**:
    - Open VS Code Settings (`Ctrl+,`)
@@ -86,34 +85,51 @@ If automatic detection fails or you have a custom WSL distribution name, you can
 - `Debian` - for Debian distributions
 - `kali-linux` - for Kali Linux distributions
 
-**Note**: Leave this setting empty (default) to use automatic detection.
+**Note**: Leave this setting empty (default) to use automatic detection. This setting does not affect Windows drive paths (`/mnt/c/...`), which always open as `C:\...`.
 
-### Custom Path Prefix for Remote SSH
+### Path Mappings for Remote SSH
 
-For Remote SSH connections or custom network drives, you can configure a custom path prefix:
+Explorer can only open a remote folder through a path Windows can reach, such as an SMB share or a mapped drive. Tell the extension which Windows path each remote folder is shared as:
 
-1. **Via Settings UI**:
-   - Open VS Code Settings (`Ctrl+,`)
-   - Search for "WSL Reveal Explorer"
-   - Set "Path Prefix" to your network path
+```json
+{
+  "wsl-reveal-explorer.pathMappings": {
+    "D:\\": "\\\\host\\proj1",
+    "E:\\": "\\\\host\\proj2",
+    "/home/me/projects": "\\\\server\\projects"
+  }
+}
+```
 
-2. **Via settings.json**:
+With these settings:
 
-   ```json
-   {
-     "wsl-reveal-explorer.pathPrefix": "\\\\server\\share",
-     "wsl-reveal-explorer.defaultDistributionName": ""
-   }
-   ```
+| Remote folder | Opens in Explorer |
+| --- | --- |
+| `D:\src\app` (Windows host) | `\\host\proj1\src\app` |
+| `E:\data` (Windows host) | `\\host\proj2\data` |
+| `/home/me/projects/site` (Linux host) | `\\server\projects\site` |
 
-**Examples**:
+**Rules**:
 
-- **WSL (default)**: `"\\\\wsl$"` - Standard WSL access
-- **Network Share**: `"\\\\server\\share"` - Direct network share access
-- **Mapped Drive**: `"\\\\192.168.1.100\\projects"` - IP-based network path
-- **SSHFS Mount**: `"\\\\sshfs\\hostname"` - SSHFS mounted drives
+- Keys are remote paths, values are Windows paths. Forward slashes and trailing slashes are fine in both.
+- The longest matching key wins, so you can map a whole disk and override one folder inside it.
+- Keys match whole folder names only: `/home/me/proj` does not match `/home/me/project`.
+- Windows remote paths (`D:\...`) ignore case, Linux remote paths do not.
+- If no key matches, the extension shows an error with a shortcut to this setting.
 
-**Note**: When using custom path prefixes, the distribution name is optional and can be left empty.
+**Tip**: put mappings for one host in that project's `.vscode/settings.json` when different hosts need different mappings.
+
+### Path Prefix (legacy)
+
+`wsl-reveal-explorer.pathPrefix` is the older single-prefix setting. For Remote SSH it is only used when no `pathMappings` key matches, and it puts the whole remote path under one share:
+
+```json
+{
+  "wsl-reveal-explorer.pathPrefix": "\\\\server\\share"
+}
+```
+
+`/home/user/project` then opens as `\\server\share\home\user\project`. Prefer `pathMappings` for new setups. In WSL windows, leave it at the default `\\wsl$`.
 
 ### Custom File Explorer
 
@@ -159,14 +175,31 @@ code .
 # Test the functionality by right-clicking files in the explorer
 ```
 
+### Tests
+
+The path conversion lives in `paths.js` and has no VS Code dependency, so it runs under plain Node:
+
+```bash
+npm test
+```
+
+`test/machine.test.js` additionally checks the generated paths against your real machine (real `wslpath`, real drives, every folder must exist). It runs only under Windows Node started from the WSL share:
+
+```powershell
+Set-Location \\wsl.localhost\<Distribution>\path\to\vscode-wsl-reveal-explorer
+node --test "test/*.test.js"
+# Also open one Explorer window the same way the extension does:
+$env:REVEAL_OPEN = "1"; node --test "test/*.test.js"
+```
+
 ## 🐛 Troubleshooting
 
 If the extension doesn't work:
-1. **Ensure you're running VS Code in WSL mode or Remote SSH** (not Windows locally)
-2. **Verify that PowerShell is available** on your Windows system
+1. **Ensure you're running VS Code on Windows, in WSL mode or Remote SSH**
+2. **Check that the extension is installed locally**: in the Extensions view it should be listed under "Local", not under the WSL or SSH section. Reload the window after updating.
 3. **Check that Windows File Explorer can access your configured paths manually**
    - For WSL: `\\wsl$\<distribution>`
-   - For Remote SSH: Your custom network path
+   - For Remote SSH: the Windows path in your `pathMappings`
 
 ### Distribution Detection Issues
 
@@ -184,30 +217,24 @@ If the extension opens the wrong folder or fails to work:
    - Go to VS Code Settings and search for "WSL Reveal Explorer"
    - Set "Default Distribution Name" to the correct name (e.g., `Ubuntu-22.04`, `Ubuntu2`)
 
-3. **Common distribution name issues**:
-   - Auto-detection might return `Ubuntu` but your distribution is `Ubuntu2`
-   - Version-specific names like `Ubuntu-20.04` vs `Ubuntu-22.04`
-   - Custom installation names
+3. **If you set this setting earlier as a workaround**, try clearing it first: detection now uses `wslpath` and `$WSL_DISTRO_NAME`, which report the real distribution name (e.g. `Ubuntu2`, not `Ubuntu`)
 
 ### Remote SSH Issues
 
 For Remote SSH connections:
 
-1. **Verify your network path configuration**:
-   - Set the correct `pathPrefix` in settings
-   - Test the path manually in Windows File Explorer
-
-2. **Common Remote SSH scenarios**:
-   - **SSHFS mounts**: Configure path like `\\\\sshfs\\hostname`
-   - **Network shares**: Use `\\\\server\\share` format
-   - **Direct IP access**: Use `\\\\192.168.1.100\\path` format
-
+1. **"No path mapping matches ..."**: add the remote folder (or one of its parents) to `pathMappings`. The error shows the exact remote path to use.
+2. **Explorer opens but shows an error**: paste the mapped Windows path into Explorer's address bar. If that fails too, the share itself is not reachable from Windows.
 3. **Path mapping examples**:
 
    ```text
-   Remote path: /home/user/project
-   Windows path: \\server\share\home\user\project
-   Configuration: "pathPrefix": "\\\\server\\share"
+   Remote path: D:\src\app              (Windows host)
+   Windows path: \\host\proj1\src\app
+   Configuration: "pathMappings": { "D:\\": "\\\\host\\proj1" }
+
+   Remote path: /home/user/project      (Linux host)
+   Windows path: \\server\share\project
+   Configuration: "pathMappings": { "/home/user": "\\\\server\\share" }
    ```
 
 ### File Explorer Issues
