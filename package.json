@@ -2,7 +2,7 @@
   "name": "wsl-reveal-explorer",
   "displayName": "WSL Reveal in File Explorer",
   "description": "Seamlessly open Windows File Explorer from WSL with zero configuration. Right-click any file or folder to reveal it in Windows Explorer.",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "icon": "assets/imgs/logo.jpg",
   "author": {
     "name": "Feras Abdalrahman",
@@ -64,7 +64,7 @@
         "wsl-reveal-explorer.defaultDistributionName": {
           "type": "string",
           "default": "",
-          "description": "Default WSL distribution name to use when auto-detection fails (e.g., 'Ubuntu-22.04', 'Ubuntu2'). Leave empty to use automatic detection."
+          "description": "Override the auto-detected WSL distribution name (e.g., 'Ubuntu-22.04', 'Ubuntu2'). Not used for Windows drive paths like /mnt/c/..., which always open as C:\\.... Leave empty to use automatic detection."
         },
         "wsl-reveal-explorer.pathPrefix": {
           "type": "string",

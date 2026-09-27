@@ -54,9 +54,9 @@ function convertToWindowsPath(remotePath) {
 	const config = vscode.workspace.getConfiguration('wsl-reveal-explorer');
 	const configuredDistro = config.get('defaultDistributionName');
 	const pathPrefix = config.get('pathPrefix') || '\\\\wsl$';
-	
+
 	let distro = 'Ubuntu'; // fallback default
-	
+
 	// Check if we're using a custom path prefix (not WSL)
 	if (pathPrefix !== '\\\\wsl$') {
 		// For custom path prefixes (like Remote SSH), use the configured distro or empty
@@ -67,25 +67,33 @@ function convertToWindowsPath(remotePath) {
 		}
 		console.log('Using custom path prefix:', pathPrefix, 'with distro:', distro);
 	} else {
-		// Original WSL logic
+		// Windows drive mounted in WSL: /mnt/c/foo -> C:\foo
+		const driveMatch = remotePath.match(/^\/mnt\/([a-zA-Z])(\/.*)?$/);
+		if (driveMatch) {
+			const drivePath = `${driveMatch[1].toUpperCase()}:\\${(driveMatch[2] || '').slice(1).replace(/\//g, '\\')}`;
+			console.log('Using Windows drive path:', drivePath);
+			return drivePath;
+		}
+
 		if (configuredDistro && configuredDistro.trim()) {
 			// Use the user-configured distribution name
 			distro = configuredDistro.trim();
 			console.log('Using configured distro name:', distro);
 		} else {
-			// Detect WSL distro name dynamically only if no configuration is set
-			const { execSync } = require('child_process');
-			
+			// Let WSL convert the path itself (handles distro name and custom mount roots)
+			const { execFileSync } = require('child_process');
+
 			try {
-				// Try to get the actual distro name
-				const result = execSync('cat /etc/os-release | grep "^NAME=" | cut -d= -f2 | tr -d \'"\'', { encoding: 'utf8' });
-				if (result.trim()) {
-					distro = result.trim();
+				const result = execFileSync('wslpath', ['-w', remotePath], { encoding: 'utf8' }).trim();
+				if (result) {
+					console.log('Using wslpath result:', result);
+					return result;
 				}
 			} catch (error) {
-				console.log('Could not detect distro name, using default:', distro);
+				console.log('wslpath failed, falling back to manual conversion:', error.message);
 			}
-			
+
+			distro = detectDistroName() || distro;
 			console.log('Using auto-detected distro name:', distro);
 		}
 	}
@@ -103,6 +111,21 @@ function convertToWindowsPath(remotePath) {
 		// For custom paths without distro name
 		return `${pathPrefix}\\${winPath}`;
 	}
+}
+
+function detectDistroName() {
+	// Set by WSL for every process started through wsl.exe
+	if (process.env.WSL_DISTRO_NAME) {
+		return process.env.WSL_DISTRO_NAME;
+	}
+
+	// VS Code WSL remote authority looks like "wsl+Ubuntu2"
+	const authority = vscode.env.remoteAuthority;
+	if (authority && authority.startsWith('wsl+')) {
+		return decodeURIComponent(authority.slice(4));
+	}
+
+	return '';
 }
 
 function buildExplorerCommand(windowsPath) {

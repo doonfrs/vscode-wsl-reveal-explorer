@@ -55,8 +55,8 @@ That's it! No configuration needed by default.
 ## 🔧 How It Works
 
 The extension automatically:
-- Detects your WSL distribution name (or uses your custom configuration)
-- Converts Linux paths to Windows UNC format (`\\wsl$\Distribution\path`)
+- Converts Linux paths with `wslpath` to Windows UNC format (`\\wsl.localhost\Distribution\path`), falling back to `$WSL_DISTRO_NAME` if needed (or uses your custom configuration)
+- Opens Windows drive paths directly: `/mnt/c/Users/me/project` opens as `C:\Users\me\project`
 - Uses PowerShell to reliably open Windows File Explorer
 - Handles path escaping and special characters
 
@@ -64,7 +64,7 @@ The extension automatically:
 
 ### Custom WSL Distribution Name
 
-If automatic detection fails or you have a custom WSL distribution name, you can override it:
+The distribution name is detected automatically, so this is rarely needed. If you still want to force a specific name, you can override it:
 
 1. **Via Settings UI**:
    - Open VS Code Settings (`Ctrl+,`)
@@ -86,7 +86,7 @@ If automatic detection fails or you have a custom WSL distribution name, you can
 - `Debian` - for Debian distributions
 - `kali-linux` - for Kali Linux distributions
 
-**Note**: Leave this setting empty (default) to use automatic detection.
+**Note**: Leave this setting empty (default) to use automatic detection. This setting does not affect Windows drive paths (`/mnt/c/...`), which always open as `C:\...`.
 
 ### Custom Path Prefix for Remote SSH
 
@@ -184,10 +184,7 @@ If the extension opens the wrong folder or fails to work:
    - Go to VS Code Settings and search for "WSL Reveal Explorer"
    - Set "Default Distribution Name" to the correct name (e.g., `Ubuntu-22.04`, `Ubuntu2`)
 
-3. **Common distribution name issues**:
-   - Auto-detection might return `Ubuntu` but your distribution is `Ubuntu2`
-   - Version-specific names like `Ubuntu-20.04` vs `Ubuntu-22.04`
-   - Custom installation names
+3. **If you set this setting earlier as a workaround**, try clearing it first: detection now uses `wslpath` and `$WSL_DISTRO_NAME`, which report the real distribution name (e.g. `Ubuntu2`, not `Ubuntu`)
 
 ### Remote SSH Issues
 
