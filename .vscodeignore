@@ -9,3 +9,6 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 test/**
+.claude/**
+build.sh
+publish.sh
