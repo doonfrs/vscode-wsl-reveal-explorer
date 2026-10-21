@@ -1,4 +1,4 @@
 #!/bin/bash
 ./build.sh
 
-vsce publish
+npx vsce publish

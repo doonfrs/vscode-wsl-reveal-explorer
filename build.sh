@@ -1,5 +1,5 @@
 #!/bin/bash
 
-rm -rf vscode-filament-*.vsix
+rm -rf wsl-reveal-explorer-*.vsix
 
-vsce package
+npx vsce package

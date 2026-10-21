@@ -94,6 +94,7 @@
     "test": "node --test test/*.test.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.74.0"
+    "@types/vscode": "^1.74.0",
+    "@vscode/vsce": "^4.0.0"
   }
-} 
+}
